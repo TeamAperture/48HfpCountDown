@@ -21,9 +21,9 @@
 
 
 import RPi.GPIO as GPIO
-import time
 from pathlib import Path
 from datetime import datetime, timedelta
+import math
 import logging
 
 # Set up pins
@@ -115,9 +115,9 @@ def setClock(state):
     total_seconds = state.currentCountdown.total_seconds()
 
     if total_seconds >= 0:
-        hours = int(total_seconds / 3600)
-        minutes = int((total_seconds % 3600) / 60)
-        seconds = int(total_seconds % 60)
+        hours = math.ceil(total_seconds / 3600)
+        minutes = math.ceil((total_seconds % 3600) / 60)
+        seconds = math.ceil(total_seconds % 60)
 
         segCode = str2segCode('{:02d}{:02d}{:02d}'.format(hours, minutes, seconds))
         hc595_shift(segCode, nShiftBits)
