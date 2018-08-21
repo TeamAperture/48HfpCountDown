@@ -34,9 +34,11 @@ ST_CP = 24  # Latch - Connected to pin 24 of all 74hc595s
 # Segment code from 0 to F in Hexadecimal
 #segCode = [0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f,0x77,0x7c,0x39,0x5e,0x79,0x71]
 
-#Running light in Hexadecimal
-#segCode = [0x01,0x02,0x04,0x08,0x10,0x20,0x40]   #single segments
-#segCode = [0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f]   #digits 0-9, aligned to bits 0-6
+# Running light in Hexadecimal
+#segCode = [0x01,0x02,0x04,0x08,0x10,0x20,0x40]
+
+# Digits 0-9, aligned to bits 0-6
+#segCode = [0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f]
 
 segDict = {'0': 0x7e,
            '1': 0x0c,
@@ -50,23 +52,24 @@ segDict = {'0': 0x7e,
            '9': 0xde,
            'H': 0xec,
            'F': 0xe2,
-           'P': 0xe6}
+           'P': 0xe6,
+           ' ': 0x00}
 noSegCode = 0x80
-
 nShiftBits = 48
+zeroTimeout = 3600 #time in seconds after which clock will show '48 HFP' again
 
 class State:
     clockPaused = True
     clockFinish = datetime.now()
-    currentCountdown = timedelta(seconds = -1)
+    currentCountdown = timedelta(seconds = -zeroTimeout)
 
 def print_msg():
-    print 'Program is running...'
-    print 'Please press Ctrl+C to end the program...'
+    print('Program is running...')
+    print('Please press Ctrl+C to end the program...')
    
 def setup(state):
     initClock(state)
-    # initGPIO()
+    initGPIO()
     setClock(state)
 
 def initGPIO():
@@ -90,7 +93,7 @@ def initClock(state):
         state.clockFinish = datetime.strptime(timeStr, "%Y/%m/%d - %H:%M:%S")
         state.currentCountdown = state.clockFinish - datetime.now()
 
-# Shift the data to 74HC595
+#Shift the data to 74HC595
 def hc595_shift(dat, bits):
     leftBit = 1 << (bits - 1)
 
@@ -105,30 +108,41 @@ def loop(state):
     while True:
         if not state.clockPaused:
             state.currentCountdown = state.clockFinish - datetime.now()
-            if int(state.currentCountdown.total_seconds()) <= 0:
+            if math.ceil(state.currentCountdown.total_seconds()) < -zeroTimeout:
                 state.clockPaused = True
-                state.currentCountdown = timedelta(seconds = 0)
+                state.currentCountdown = timedelta(seconds = -zeroTimeout)
 
             setClock(state)
 
 def setClock(state):
-    total_seconds = state.currentCountdown.total_seconds()
+    total_seconds = math.ceil(state.currentCountdown.total_seconds())
 
-    if total_seconds >= 0:
-        hours = math.ceil(total_seconds / 3600)
-        minutes = math.ceil((total_seconds % 3600) / 60)
-        seconds = math.ceil(total_seconds % 60)
+    if total_seconds > 0:
+        hours = int(total_seconds / 3600)
+        minutes = int((total_seconds % 3600) / 60)
+        seconds = int(total_seconds % 60)
 
         segCode = str2segCode('{:02d}{:02d}{:02d}'.format(hours, minutes, seconds))
+        #print('{:02d}{:02d}{:02d}'.format(hours, minutes, seconds) + " - " + '{:#018x}'.format(segCode))
+        hc595_shift(segCode, nShiftBits)
+    elif total_seconds <= 0 and total_seconds > -zeroTimeout:
+        on = int(state.currentCountdown.total_seconds() * 2) % 2 == 0
+        if on:
+            segCode = str2segCode('000000')
+        else:
+            segCode = str2segCode('      ')
+        #print('000000' + " - " + '{:#018x}'.format(segCode))
         hc595_shift(segCode, nShiftBits)
     else:
         segCode = str2segCode('48 HFP')
+        #print('48 HFP' + " - " + '{:#018x}'.format(segCode))
         hc595_shift(segCode, nShiftBits)
 
 def str2segCode(str):
     segCode = 0x0000000000000000
-    for c in str:
-        segCode = (segCode << 8) & getSegCode(c)
+    for c in reversed(str):
+        segCode = (segCode << 8) | getSegCode(c)
+    return segCode
 
 def getSegCode(c):
     return segDict.get(c, noSegCode)
