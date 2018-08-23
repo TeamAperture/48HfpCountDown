@@ -21,10 +21,11 @@
 
 
 import RPi.GPIO as GPIO
-from pathlib import Path
+#from pathlib import Path
 from datetime import datetime, timedelta
 import math
 import logging
+import os.path
 
 # Set up pins
 SD = 18     # Data - Connected to pin 18 of the first 74hc595
@@ -82,16 +83,18 @@ def initGPIO():
     GPIO.output(ST_CP, GPIO.LOW)
 
 def initClock(state):
-    timePath = Path("clock.48h")
-    if timePath.is_file():
-
-        timeFile = open(timePath.resolve(), 'r')
+    timePath = 'clock.48h'    
+    
+    if os.path.isfile(timePath):
+        timeFile = open(timePath, 'r')
         timeStr = timeFile.read()
         timeFile.close()
 
         state.clockPaused = False
         state.clockFinish = datetime.strptime(timeStr, "%Y/%m/%d - %H:%M:%S")
         state.currentCountdown = state.clockFinish - datetime.now()
+
+        print('finish time loaded: ' + datetime.strftime(state.clockFinish, "%Y/%m/%d - %H:%M:%S"))
 
 #Shift the data to 74HC595
 def hc595_shift(dat, bits):
@@ -100,7 +103,7 @@ def hc595_shift(dat, bits):
     GPIO.output(ST_CP, GPIO.LOW)
     for bit in range(0, bits):
         GPIO.output(SH_CP, GPIO.LOW)
-        GPIO.output(SD, leftBit & (dat << bit))
+        GPIO.output(SD, (leftBit & (dat << bit)) > 0)
         GPIO.output(SH_CP, GPIO.HIGH)
     GPIO.output(ST_CP, GPIO.HIGH)
 
