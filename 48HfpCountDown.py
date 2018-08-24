@@ -129,9 +129,9 @@ def loop(state):
                 state.currentCountdown = timedelta(seconds = -zeroTimeout)
 
             setClock(state)
-
-        if start_button_pressed(state):
-            startClock(state)
+        else:
+            if start_button_pressed(state):
+                startClock(state)
 
 
 def start_button_pressed(state):
