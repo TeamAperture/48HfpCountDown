@@ -60,8 +60,8 @@ noSegCode = 0x80
 nShiftBits = 48
 zeroTimeout = 3600 #time in seconds after which clock will show '48 HFP' again
 
-#countdownTime = timedelta(hours = 48, minutes = 30, seconds = 0)
-countdownTime = timedelta(hours = 0, minutes = 0, seconds = 5)
+countdownTime = timedelta(hours = 48, minutes = 30, seconds = 0)
+#countdownTime = timedelta(hours = 0, minutes = 0, seconds = 5)
 
 class State:
     clockFinish = datetime.now()
@@ -184,8 +184,8 @@ def setClock(state):
 
 def str2segCode(str):
     segCode = 0x0000000000000000
-    #for c in reversed(str):
-    for c in str:
+    for c in reversed(str):
+    #for c in str:
         segCode = (segCode << 8) | getSegCode(c)
     return segCode
 
